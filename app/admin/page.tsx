@@ -1,25 +1,50 @@
 "use client";
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Connect to your existing Supabase environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default function AdminDashboard() {
-  // State to make the page interactive!
   const [isDrawing, setIsDrawing] = useState(false);
+  const [dbUsers, setDbUsers] = useState<any[]>([]); // This will hold your REAL users
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real users from Supabase when the page loads
+  useEffect(() => {
+    async function fetchRealUsers() {
+      // 🟢 CORRECTED: Now fetching from 'profiles' to match your SQL schema
+      const { data, error } = await supabase
+        .from('profiles') 
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setDbUsers(data);
+      } else if (error) {
+        console.error("Error fetching users:", error.message);
+      }
+      setIsLoading(false);
+    }
+    fetchRealUsers();
+  }, []);
+
   const [pendingQueue, setPendingQueue] = useState([
     { id: 1, name: "Marcus Johnson", draw: "April Draw", score: 78, status: "Pending" },
     { id: 2, name: "David Miller", draw: "March Draw", score: 82, status: "Pending" }
   ]);
 
-  // Fake loading function for the draw
   const handleDraw = () => {
     setIsDrawing(true);
     setTimeout(() => {
       setIsDrawing(false);
-      alert("🎉 Draw Complete! The system has selected a winner for the Titleist TSR Driver. An automated email has been sent.");
+      alert("🎉 Draw Complete! The system has selected a winner for the Titleist TSR Driver.");
     }, 2000);
   };
 
-  // Function to remove people from the queue when clicked
   const handleVerify = (id: number, action: string) => {
     setPendingQueue(pendingQueue.filter(user => user.id !== id));
     alert(`User has been ${action}! Database updated.`);
@@ -41,12 +66,6 @@ export default function AdminDashboard() {
           <div className="px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center gap-3 font-medium cursor-pointer">
             Dashboard Overview
           </div>
-          <div onClick={() => alert("Navigating to User Management...")} className="px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg flex items-center gap-3 font-medium transition-colors cursor-pointer">
-            User Management
-          </div>
-          <div onClick={() => alert("Loading Draw System Settings...")} className="px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg flex items-center gap-3 font-medium transition-colors cursor-pointer">
-            Draw System
-          </div>
         </nav>
         
         <div className="p-4 border-t border-white/5">
@@ -65,40 +84,52 @@ export default function AdminDashboard() {
               <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                 System Overview
               </h1>
-              <p className="text-slate-400 mt-2 text-sm">Platform metrics and operational controls.</p>
+              <p className="text-slate-400 mt-2 text-sm">Platform metrics and live database controls.</p>
             </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pt-4">
             
-            {/* Left Column (Users & Charities) */}
+            {/* Left Column (Real Database Users) */}
             <div className="xl:col-span-2 space-y-8">
               
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-bold flex items-center gap-2">Recent Registrations</h2>
-                  <button onClick={() => alert("Loading full database table...")} className="text-sm font-medium text-emerald-400 hover:text-emerald-300">View All Users &rarr;</button>
+                  <h2 className="text-lg font-bold flex items-center gap-2">Live Database Users</h2>
+                  <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded">Connected to Supabase</span>
                 </div>
+                
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead>
                       <tr className="text-slate-400 border-b border-white/5">
-                        <th className="pb-3 font-medium">Golfer</th>
+                        <th className="pb-3 font-medium">User ID / Email</th>
                         <th className="pb-3 font-medium">Status</th>
-                        <th className="pb-3 font-medium">Joined</th>
+                        <th className="pb-3 font-medium">Joined Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                      <tr className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4 font-medium">testuser@example.com</td>
-                        <td className="py-4"><span className="px-2.5 py-1 rounded-md text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">Subscribed</span></td>
-                        <td className="py-4 text-slate-400">Today</td>
-                      </tr>
-                      <tr className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4 font-medium">admin@example.com</td>
-                        <td className="py-4"><span className="px-2.5 py-1 rounded-md text-xs font-medium border bg-slate-800 text-slate-400 border-slate-700">Admin</span></td>
-                        <td className="py-4 text-slate-400">Apr 2</td>
-                      </tr>
+                      {isLoading ? (
+                        <tr><td colSpan={3} className="py-4 text-center text-slate-400">Fetching live data from Supabase...</td></tr>
+                      ) : dbUsers.length === 0 ? (
+                        <tr><td colSpan={3} className="py-4 text-center text-slate-400">No users found in this table, or Row Level Security (RLS) is blocking access.</td></tr>
+                      ) : (
+                        dbUsers.map((user, index) => (
+                          <tr key={index} className="hover:bg-white/[0.02] transition-colors">
+                            {/* Grabs the email if it exists, otherwise falls back to ID */}
+                            <td className="py-4 font-medium">{user.email || user.id || "Unknown User"}</td>
+                            <td className="py-4">
+                              {/* 🟢 CORRECTED: Now checking the 'role' column from your SQL schema */}
+                              <span className="px-2.5 py-1 rounded-md text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                                {user.role === 'subscriber' ? "Paid" : "Free Tier"}
+                              </span>
+                            </td>
+                            <td className="py-4 text-slate-400">
+                              {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
