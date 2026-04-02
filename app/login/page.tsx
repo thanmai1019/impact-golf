@@ -2,7 +2,7 @@
 
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '@/lib/supabase'; // Our database connection
+import { supabase } from '@/lib/supabase'; 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -11,15 +11,14 @@ export default function LoginPage() {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    // 1. Check if the user is already logged in when the page loads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-        router.push('/dashboard'); // Send them straight to the dashboard if logged in!
+        router.push('/dashboard'); 
       }
     });
 
-    // 2. Listen for login events (like when they click 'Sign In')
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
@@ -40,7 +39,7 @@ export default function LoginPage() {
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
-          providers={[]} // We are just using Email/Password for now to keep it simple
+          providers={[]} 
         />
       </div>
     </div>
