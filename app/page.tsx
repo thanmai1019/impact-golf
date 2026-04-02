@@ -1,128 +1,141 @@
+"use client";
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function HomePage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  // Set your admin email here
+  const ADMIN_EMAIL = "your-email@example.com"; 
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+    };
+    checkUser();
+  }, []);
+
+  const toggleFaq = (index: number) => {
+    setActiveFaq(activeFaq === index ? null : index);
+  };
+
+  const prizes = [
+    { title: "Titleist TSR3 Driver", value: "$599", draw: "April Draw", image: "🏌️‍♂️" },
+    { title: "Scotty Cameron Putter", value: "$429", draw: "May Draw", image: "⛳" },
+    { title: "Pro V1 Golf Balls (12 Dozen)", value: "$650", draw: "June Draw", image: "⚪" },
+  ];
+
+  const faqs = [
+    { q: "How are my draw numbers generated?", a: "Once you log a valid 18-hole score, our algorithm generates a unique 5-digit number for that month's draw." },
+    { q: "How much goes to charity?", a: "A minimum of 10% of every subscription tier goes directly to the charity you select in your profile settings." },
+    { q: "Is this a lottery?", a: "No. ImpactGolf is a membership. The monthly gear vault is a free promotional perk included." },
+    { q: "How do I claim my prize if I win?", a: "Winners are notified via email and in their dashboard." }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0a0f1a] text-slate-50 font-sans selection:bg-emerald-500/30 overflow-hidden">
+    <div className="min-h-screen bg-[#fafafa] text-slate-900 font-sans selection:bg-emerald-200">
       
-      {/* 1. HERO SECTION */}
-      <section className="relative pt-32 pb-24 md:pt-40 md:pb-32 px-6 flex flex-col items-center text-center">
-        {/* Complex Multi-Layered Glow Effect */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-[400px] bg-emerald-500/20 blur-[100px] rounded-full pointer-events-none mix-blend-screen"></div>
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none mix-blend-screen"></div>
-        
-        <div className="relative z-10 max-w-5xl mx-auto">
-          {/* Top Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-slate-300 text-sm font-medium tracking-wide mb-8 hover:bg-white/10 transition-colors">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
-            Live: Monthly Draw Engine Active
-          </div>
+      {/* 1. STICKY NAVBAR */}
+      <nav className="fixed w-full top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1]">
-            Play Golf. <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 via-teal-300 to-cyan-500">
-              Impact the World.
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform text-white font-bold italic">I</div>
+            <span className="text-2xl font-black tracking-tighter uppercase text-slate-900">
+              Impact<span className="text-emerald-700">Golf</span>
             </span>
+          </Link>
+          
+          <div className="hidden md:flex items-center gap-8 text-sm font-bold uppercase tracking-widest text-slate-500">
+            <Link href="#vault" className="hover:text-emerald-700 transition-colors">The Vault</Link>
+            <Link href="#process" className="hover:text-emerald-700 transition-colors">How it Works</Link>
+            
+            {/* ADMIN BUTTON: Only shows if you are logged in with the admin email */}
+            {user?.email === ADMIN_EMAIL && (
+              <Link href="/admin" className="text-red-600 hover:bg-red-50 px-3 py-1 rounded-md border border-red-100 transition-all">
+                Admin Portal
+              </Link>
+            )}
+          </div>
+
+          <div className="hidden md:flex items-center gap-4">
+            {user ? (
+              <Link href="/dashboard" className="px-6 py-2.5 bg-emerald-800 text-white text-sm font-bold rounded-lg shadow-md uppercase tracking-wider">
+                My Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="px-6 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-lg shadow-md uppercase tracking-wider">
+                Login / Sign Up
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 text-slate-600">
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16m-7 6h7"}></path></svg>
+          </button>
+        </div>
+      </nav>
+
+      {/* 2. HERO SECTION */}
+      <section className="relative pt-40 pb-20 md:pt-52 md:pb-32 px-6 overflow-hidden">
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-8 text-slate-900 uppercase leading-[0.95]">
+            Play Better. <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-emerald-900">Win Bigger.</span>
           </h1>
-          
-          <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
-            The world&apos;s first charity subscription platform for amateur golfers. Log your scores, win massive monthly cash prizes, and guarantee <span className="text-emerald-400 font-semibold">10% of your fee</span> goes to a charity of your choice.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center">
-            <Link 
-              href="/pricing" 
-              className="group relative w-full sm:w-auto px-8 py-4 bg-emerald-500 text-slate-950 font-bold rounded-full transition-all hover:bg-emerald-400 hover:scale-105 active:scale-95 text-lg overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out"></div>
-              <span className="relative z-10">Start Your Membership</span>
-            </Link>
-            <Link 
-              href="/charities" 
-              className="w-full sm:w-auto px-8 py-4 bg-transparent text-white font-semibold rounded-full border border-slate-700 hover:border-slate-500 hover:bg-slate-800/50 transition-all text-lg backdrop-blur-sm"
-            >
-              Explore Charities
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link href={user ? "/dashboard" : "/login"} className="w-full sm:w-auto px-10 py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-emerald-800 transition-all text-lg uppercase tracking-wider shadow-xl">
+              {user ? "View My Scores" : "Start Your Journey"}
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 2. BENTO GRID STATS SECTION */}
-      <section className="py-12 px-6 relative z-10">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-900/50 border border-slate-800/50 p-8 rounded-3xl backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] text-center">
-            <h4 className="text-4xl font-black text-white mb-2">$10<span className="text-xl text-slate-500 font-medium">/mo</span></h4>
-            <p className="text-slate-400 text-sm">Flat subscription fee</p>
-          </div>
-          <div className="bg-slate-900/50 border border-slate-800/50 p-8 rounded-3xl backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-[50px]"></div>
-            <h4 className="text-4xl font-black text-emerald-400 mb-2">10%</h4>
-            <p className="text-slate-400 text-sm">Guaranteed charity split</p>
-          </div>
-          <div className="bg-slate-900/50 border border-slate-800/50 p-8 rounded-3xl backdrop-blur-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] text-center">
-            <h4 className="text-4xl font-black text-white mb-2">3-5</h4>
-            <p className="text-slate-400 text-sm">Number matches to win</p>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. HOW IT WORKS SECTION */}
-      <section className="py-24 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">The Mechanics</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">Everything is automated. You focus on your golf swing, our platform handles the payouts and donations.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Connecting line for desktop */}
-            <div className="hidden md:block absolute top-12 left-20 right-20 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent z-0"></div>
-
-            {/* Steps */}
-            {[
-              { num: "01", title: "Subscribe & Select", desc: "Pay $10/month via our secure Stripe integration. Pick your favorite charity from our global database to receive your donation.", color: "from-emerald-400 to-cyan-400" },
-              { num: "02", title: "Log Your Rounds", desc: "Hit the course. Every time you play, log your Stableford score (1-45) in your dashboard. These scores become your draw numbers.", color: "from-cyan-400 to-blue-500" },
-              { num: "03", title: "Monthly Draw", desc: "Our engine automatically pulls 5 winning numbers. Match 3 or more of your scores to win a percentage of the massive global prize pool.", color: "from-blue-500 to-indigo-500" }
-            ].map((step, i) => (
-              <div key={i} className="relative z-10 flex flex-col items-center text-center p-8 rounded-3xl bg-slate-900/40 border border-slate-800 backdrop-blur-sm hover:bg-slate-800/60 transition-colors shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]">
-                <div className={`w-16 h-16 rounded-2xl mb-6 flex items-center justify-center bg-gradient-to-br ${step.color} p-[1px]`}>
-                  <div className="w-full h-full bg-slate-950 rounded-2xl flex items-center justify-center text-xl font-bold text-white">
-                    {step.num}
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold mb-4 text-white">{step.title}</h3>
-                <p className="text-slate-400 leading-relaxed">{step.desc}</p>
+      {/* PRIZES SECTION (Same as yours) */}
+      <section id="vault" className="py-24 bg-white border-y border-slate-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl font-black uppercase tracking-tighter mb-12">The Prize Vault</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {prizes.map((p, i) => (
+              <div key={i} className="rounded-3xl border p-8 bg-slate-50">
+                <div className="text-6xl mb-4">{p.image}</div>
+                <h3 className="text-xl font-black uppercase">{p.title}</h3>
+                <p className="text-emerald-700 font-bold">{p.value}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 4. FINAL CTA SECTION */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-emerald-900/10"></div>
-        <div className="max-w-4xl mx-auto bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-slate-700 p-12 md:p-16 rounded-[2.5rem] text-center relative z-10 backdrop-blur-xl shadow-2xl shadow-black/50">
-          <h2 className="text-3xl md:text-5xl font-black mb-6">Ready to tee off?</h2>
-          <p className="text-xl text-slate-300 mb-10 max-w-xl mx-auto font-light">
-            Join hundreds of amateur golfers who are winning cash and making a difference.
-          </p>
-          <Link 
-            href="/login" 
-            className="inline-block px-10 py-5 bg-white text-slate-950 font-black rounded-full transition-all hover:bg-slate-200 hover:scale-105 active:scale-95 text-lg shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-          >
-            Create Your Account
-          </Link>
+      {/* FAQ SECTION */}
+      <section className="py-24 bg-slate-50">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-4xl font-black uppercase tracking-tighter text-center mb-16">Common Questions</h2>
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div key={index} className="bg-white border rounded-2xl overflow-hidden">
+                <button onClick={() => toggleFaq(index)} className="w-full px-8 py-6 text-left flex justify-between font-bold">
+                  {faq.q}
+                  <span>{activeFaq === index ? '−' : '+'}</span>
+                </button>
+                {activeFaq === index && <div className="px-8 pb-6 text-slate-500">{faq.a}</div>}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* 5. MINIMAL FOOTER */}
-      <footer className="py-8 border-t border-slate-800/50 bg-[#0a0f1a] text-center">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-slate-500 text-sm">© 2026 ImpactGolf Platform.</p>
-          <div className="flex gap-6 text-sm text-slate-500">
-            <Link href="#" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link>
-            <Link href="#" className="hover:text-emerald-400 transition-colors">Terms of Service</Link>
-          </div>
-        </div>
+      {/* FOOTER */}
+      <footer className="bg-slate-950 py-10 border-t border-slate-900 text-center">
+          <p className="text-slate-600 text-sm mb-4 italic">© {new Date().getFullYear()} ImpactGolf Inc.</p>
+          {user?.email === ADMIN_EMAIL && (
+             <Link href="/admin" className="text-[10px] text-slate-800 uppercase tracking-widest hover:text-red-500">Admin Login</Link>
+          )}
       </footer>
     </div>
   );

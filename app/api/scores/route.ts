@@ -1,62 +1,59 @@
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase'; // This imports the connection we made earlier!
 
 export async function POST(request: Request) {
-  try {
-    // 1. Get the data sent from the frontend
-    const body = await request.json();
-    const { userId, score, datePlayed } = body;
+  // Initialize Supabase for a Route Handler
+  const supabase = createRouteHandlerClient({ cookies });
 
-    // 2. Validate the score range (Must be 1-45)
-    if (score < 1 || score > 45) {
+  try {
+    // 1. Authenticate the user securely on the server
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'Score must be in Stableford format (1-45).' }, 
+        { error: 'Unauthorized. Please log in again.' }, 
+        { status: 401 }
+      );
+    }
+
+    // 2. Parse the incoming data from the frontend
+    const body = await request.json();
+    const { score, courseName, datePlayed } = body;
+
+    if (!score || !courseName || !datePlayed) {
+      return NextResponse.json(
+        { error: 'Missing required fields.' }, 
         { status: 400 }
       );
     }
 
-    // 3. Insert the new score into the database
-    const { data: newScore, error: insertError } = await supabase
+    // 3. Insert the score using the secure server-side UUID
+    const { error: dbError } = await supabase
       .from('scores')
-      .insert([{ user_id: userId, score: score, date_played: datePlayed }])
-      .select();
+      .insert([
+        { 
+          user_id: user.id, // Securely grabbed from the server session
+          gross_score: parseInt(score), 
+          course_name: courseName,
+          played_at: datePlayed
+        }
+      ]);
 
-    if (insertError) throw insertError;
-
-    // 4. Enforce the "Latest 5 Only" Rule
-    // First, fetch all scores for this user, ordered oldest to newest
-    const { data: allScores, error: fetchError } = await supabase
-      .from('scores')
-      .select('id')
-      .eq('user_id', userId)
-      .order('date_played', { ascending: true });
-
-    if (fetchError) throw fetchError;
-
-    // 5. If they have more than 5 scores, find the oldest and delete them
-    if (allScores && allScores.length > 5) {
-      // Calculate how many extra scores we have (e.g., if we have 6, we delete 1)
-      const scoresToDelete = allScores.slice(0, allScores.length - 5);
-      const idsToDelete = scoresToDelete.map((s) => s.id);
-
-      const { error: deleteError } = await supabase
-        .from('scores')
-        .delete()
-        .in('id', idsToDelete);
-
-      if (deleteError) throw deleteError;
+    if (dbError) {
+      throw dbError; // Caught by the catch block below
     }
 
-    // 6. Return a success message back to the frontend
+    // 4. Return success
     return NextResponse.json(
-      { message: 'Score saved and oldest score replaced (if applicable)!', score: newScore }, 
+      { success: true, message: 'Score saved successfully!' }, 
       { status: 200 }
     );
 
-  } catch (error) {
-    console.error("Score submission error:", error);
+  } catch (error: any) {
+    console.error('API Error:', error.message);
     return NextResponse.json(
-      { error: 'Internal Server Error' }, 
+      { error: error.message || 'An unexpected error occurred.' }, 
       { status: 500 }
     );
   }

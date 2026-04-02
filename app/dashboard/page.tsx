@@ -9,120 +9,110 @@ export default function DashboardPage() {
   const [scoresList, setScoresList] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
+  // Load user and scores
   useEffect(() => {
-    const checkUserAndFetchScores = async () => {
-      // 1. Get the current logged-in user securely
+    const initDashboard = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session) {
-        // Kick them out to the login page if they aren't signed in!
         router.push('/login');
         return;
       }
-      
       setUser(session.user);
 
-      // 2. Fetch ONLY this user's scores from the database
-      const { data: userScores, error } = await supabase
+      const { data } = await supabase
         .from('scores')
         .select('*')
-        .eq('user_id', session.user.id) // This is the magic filter!
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
-      if (userScores) {
-        setScoresList(userScores);
-      }
+      if (data) setScoresList(data);
       setLoading(false);
     };
-
-    checkUserAndFetchScores();
+    initDashboard();
   }, [router]);
 
-  const submitScore = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const scoreNum = parseInt(score);
+    if (isSubmitting || !user) return;
 
-    // Enforce the PRD rule: Stableford scores only (1-45)
-    if (scoreNum < 1 || scoreNum > 45) {
-      alert("Score must be a Stableford score between 1 and 45!");
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 1 || scoreNum > 45) {
+      alert("Please enter a valid score (1-45)");
       return;
     }
 
-    // 3. Save the score using their REAL user ID
+    setIsSubmitting(true);
+
+    // Matches your exact table: user_id, score, and date_played
     const { error } = await supabase
       .from('scores')
       .insert([
         { 
           user_id: user.id, 
-          score: scoreNum, 
+          score: scoreNum,
           date_played: new Date().toISOString().split('T')[0] 
         }
       ]);
 
-    
     if (error) {
-      // This forces the console to print every single detail of the error
-      console.error("Supabase Error Details:", JSON.stringify(error, null, 2));
-      
-      // This will pop the actual error message right on your screen!
-      alert(`Database Error: ${error.message}`);
+      alert(`Error: ${error.message}`);
+      setIsSubmitting(false);
     } else {
       setScore('');
-      window.location.reload(); 
+      // Refresh the list
+      const { data } = await supabase
+        .from('scores')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (data) setScoresList(data);
+      setIsSubmitting(false);
+      alert("Score saved!");
     }
   };
 
-  if (loading) return <div className="min-h-screen flex justify-center items-center bg-slate-50">Loading your player profile...</div>;
+  if (loading) return <div className="p-10 text-center font-bold">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Player Dashboard</h1>
-        <p className="text-slate-600 mb-8">Welcome back! Log your latest rounds to enter the monthly draw.</p>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-3xl shadow-xl p-8 mb-8 border border-slate-100">
+          <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">ImpactGolf</h1>
+          <p className="text-slate-500 mb-8 font-medium">Logged in as {user?.email}</p>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Score Entry Form */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h2 className="text-xl font-semibold mb-4">Log a New Score</h2>
-            <form onSubmit={submitScore} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Stableford Score (1-45)</label>
-                <input 
-                  type="number" 
-                  value={score}
-                  onChange={(e) => setScore(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="e.g., 36"
-                  required
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition"
-              >
-                Submit Score
-              </button>
-            </form>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Stableford Score</label>
+              <input 
+                type="number" 
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 text-3xl font-black focus:border-emerald-600 outline-none transition-all"
+                placeholder="36"
+                required
+              />
+            </div>
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="w-full bg-emerald-800 text-white font-black py-4 rounded-2xl hover:bg-emerald-900 transition-all uppercase tracking-widest shadow-lg shadow-emerald-800/20 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving...' : 'Submit Round'}
+            </button>
+          </form>
+        </div>
 
-          {/* Past Scores List */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <h2 className="text-xl font-semibold mb-4">Your Recent Rounds</h2>
-            {scoresList.length === 0 ? (
-              <p className="text-slate-500 italic">No scores logged yet. Get out on the course!</p>
-            ) : (
-              <ul className="space-y-3">
-                {scoresList.map((s) => (
-                  <li key={s.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <span className="text-slate-500 text-sm">{s.date_played}</span>
-                    <span className="font-bold text-blue-900 text-lg">{s.score} pts</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div className="space-y-4">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">History</h2>
+          {scoresList.map((s) => (
+            <div key={s.id} className="bg-white p-5 rounded-2xl flex justify-between items-center border border-slate-100 shadow-sm">
+              <span className="font-bold text-slate-400 text-sm">{s.date_played}</span>
+              <span className="font-black text-emerald-800 text-xl">{s.score} PTS</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
