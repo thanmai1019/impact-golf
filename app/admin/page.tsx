@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   // 🔴 IMPORTANT: Use the email you will provide to your grader here
-  const ADMIN_EMAIL = "admin@example.com"; 
+  const ADMIN_EMAIL = "nandueduu@gmail.com"; 
 
   useEffect(() => {
     const checkAdmin = async () => {

@@ -9,7 +9,7 @@ export default function HomePage() {
   const [user, setUser] = useState<any>(null);
 
   // Set your admin email here
-  const ADMIN_EMAIL = "your-email@example.com"; 
+  const ADMIN_EMAIL = "nandueduu@gmail.com"; 
 
   useEffect(() => {
     const checkUser = async () => {
